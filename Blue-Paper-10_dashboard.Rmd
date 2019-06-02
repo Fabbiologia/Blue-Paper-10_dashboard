@@ -1,0 +1,151 @@
+---
+title: "Dashboard_test"
+resource_files:
+- data/EEZ_land.shx
+- data/EEZ_land.prj
+- data/EEZ_land.dbf
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    source_code: embed
+    theme: spacelab
+    vertical_layout: scroll
+---
+
+```{r global, include=FALSE}
+library(flexdashboard)
+library(datasets)
+library(tidyverse)
+library(stringr)
+library(mapview)
+library(maptools)
+library(raster)
+library(rgeos)
+library(DT)
+library(vegan)
+library(plotly)
+library(shiny)
+library(ggthemes)
+world <- shapefile("data/EEZ_land.shp", verbose = FALSE)
+habitats <- readRDS("data/habitats.RDS")
+```
+
+Habitats dataset
+=======================================================================
+
+Column {data-height=700}
+-----------------------------------------------------------------------
+
+### All habitat data were intersected with Exclusive Economical Zone layer to calculate the area in ```km^2```, then were divided in coastal habitats and oceanic habitats. 
+```{r}
+datatable(
+  habitats %>%
+    select(Country, Zone, Habitat, Area),
+  filter = 'top',
+  rownames = FALSE
+) %>%
+  formatRound("Area", digits = 1)
+```
+
+Column {data-height=700}
+-----------------------------------------------------------------------
+
+### Richnes values are totals per each zone: Oceanic and Coastal, same for Shannon H: use filter or search to show different Countries and the next button below to scroll down the rows.
+```{r Datatable diversity}
+habitats %>%
+  add_count(Country, Zone) %>%
+  group_by(Country, Zone) %>%
+  mutate(H = diversity(Area, index = "shannon", 2))  %>%
+  select(Country, Zone, Richness = n, Shannon_H = H) %>%
+  unique(.) -> rich
+
+datatable(rich,
+          filter = 'top',
+          rownames = FALSE) %>%
+  formatRound("Shannon_H", digits = 1)
+```
+
+
+Habitats
+=======================================================================
+
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+This allow to select specific habitat to show their habitat area contribution
+
+```{r}
+selectInput(
+      inputId = "Habitat",
+      label = NULL,
+      choices = unique(habitats$Habitat)
+      )
+```
+
+
+Column
+-----------------------------------------------------------------------
+
+### Top 20 countries for habitat area
+
+```{r}
+dfInput <- reactive({
+        habitats %>% filter(Habitat == input$Habitat)
+    })
+    
+renderPlot({
+        df1 <- dfInput() %>% arrange(Country, Area) %>% 
+            top_n(20)
+        ggplot(df1) +
+            aes(x = reorder(Country, Area), y = Area) +
+            geom_col(fill = "black") +
+            labs(x = "", y = bquote("Area (" * m ^ 2 ~ ")")) +
+            theme_economist_white() +
+            theme(axis.text.x = element_text(angle = 90))+
+            coord_flip()
+    })
+```
+
+
+
+Coastal habitats diversity map
+=======================================================================
+
+Column {data-height=700}
+-----------------------------------------------------------------------
+### Coastal habitats diversity calculated with Shannon index (H)
+
+```{r Coastal habitat diversity, fig.height=10}
+# habitat diversity per country
+
+habitats %>%
+  group_by(Country, Zone) %>%
+  summarise(H = diversity(Area, index = "shannon", 2)) -> rich
+
+div_map <- merge(world, filter(rich, Zone == "Coastal"), by = "Country")
+
+mapview(div_map, zcol = "H")
+
+```
+
+
+Oceanic habitats diversity map
+=======================================================================
+
+Column {data-height=700}
+-----------------------------------------------------------------------
+### Oceanic habitats diversity calculated with Shannon index (H)
+
+```{r Oceanic habitat diversity, fig.height=10}
+# habitat diversity per country
+habitats %>%
+  group_by(Country, Zone) %>%
+  summarise(H = diversity(Area, index = "shannon", 2)) -> rich
+
+div_map <- merge(world, filter(rich, Zone == "Oceanic"), by = "Country")
+library(mapview)
+
+mapview(div_map, zcol = "H")
+
+```
