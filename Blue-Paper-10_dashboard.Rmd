@@ -1,5 +1,5 @@
 ---
-title: "Dashboard_test"
+title: "Blue Paper 10: habitats"
 resource_files:
 - data/EEZ_land.shx
 - data/EEZ_land.prj
@@ -26,11 +26,12 @@ library(vegan)
 library(plotly)
 library(shiny)
 library(ggthemes)
+library(leaflet)
 world <- shapefile("data/EEZ_land.shp", verbose = FALSE)
 habitats <- readRDS("data/habitats.RDS")
 ```
 
-Habitats dataset
+Dataset
 =======================================================================
 
 Column {data-height=700}
@@ -108,8 +109,7 @@ renderPlot({
 ```
 
 
-
-Coastal habitats diversity map
+Coastal map
 =======================================================================
 
 Column {data-height=700}
@@ -118,19 +118,16 @@ Column {data-height=700}
 
 ```{r Coastal habitat diversity, fig.height=10}
 # habitat diversity per country
-
-habitats %>%
-  group_by(Country, Zone) %>%
-  summarise(H = diversity(Area, index = "shannon", 2)) -> rich
-
 div_map <- merge(world, filter(rich, Zone == "Coastal"), by = "Country")
+lines<-sf::st_as_sf(div_map)
+div_map<- dplyr::select(lines, Country, Area=Shape_Area, Richness, Shannon_H)
+mapview(div_map, zcol = "Shannon_H")
 
-mapview(div_map, zcol = "H")
 
 ```
 
 
-Oceanic habitats diversity map
+Oceanic map
 =======================================================================
 
 Column {data-height=700}
@@ -139,13 +136,23 @@ Column {data-height=700}
 
 ```{r Oceanic habitat diversity, fig.height=10}
 # habitat diversity per country
-habitats %>%
-  group_by(Country, Zone) %>%
-  summarise(H = diversity(Area, index = "shannon", 2)) -> rich
-
 div_map <- merge(world, filter(rich, Zone == "Oceanic"), by = "Country")
-library(mapview)
-
-mapview(div_map, zcol = "H")
+lines<-sf::st_as_sf(div_map)
+div_map<- dplyr::select(lines, Country, Area=Shape_Area, Richness, Shannon_H)
+mapview(div_map, zcol = "Shannon_H")
 
 ```
+
+
+
+Contacts
+=======================================================================
+
+Column {data-height=700}
+-----------------------------------------------------------------------
+### Authors
+Fabio Favoretto and Joy Kumagai
+
+contacts: 
+favoretto.fabio@gmail.com
+jkumagai96@gmail.com
