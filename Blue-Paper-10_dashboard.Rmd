@@ -26,9 +26,18 @@ library(vegan)
 library(plotly)
 library(shiny)
 library(ggthemes)
+library(ggthemr)
 library(leaflet)
 world <- shapefile("data/EEZ_land.shp", verbose = FALSE)
 habitats <- readRDS("data/habitats.RDS")
+
+cntry <- habitats %>%
+  group_by(Zone, Habitat) %>%
+  mutate(total_area = sum(Area)) %>%
+  group_by(Country, Zone, Habitat) %>% 
+  summarise(rel_area = (Area/total_area)*100)
+
+
 ```
 
 Dataset
@@ -80,10 +89,63 @@ This allow to select specific habitat to show their habitat area contribution
 selectInput(
       inputId = "Habitat",
       label = NULL,
-      choices = unique(habitats$Habitat)
+      choices = sort(unique(cntry$Habitat))
       )
 ```
 
+These % are calculated over the total area of each habitat, here we represent the contribution each country has to the total in %. 
+
+
+Column
+-----------------------------------------------------------------------
+
+### Top 20 countries for habitat contribution in %
+
+```{r}
+
+dfInput <- reactive({
+        cntry %>% ungroup() %>% filter(Habitat == input$Habitat)
+    })
+    
+renderPlot({
+        df1 <- dfInput() %>% arrange(Country, rel_area) %>% top_n(20)
+        ggplot(df1) +
+            aes(x = reorder(Country, rel_area), y = rel_area) +
+            geom_col(fill = "black") +
+            labs(x = "", y = "Relative % to total habitat area") +
+            theme_economist_white() +
+            theme(axis.text.x = element_text(angle = 90))+
+            coord_flip()
+    })
+
+```
+
+
+
+Countries
+=======================================================================
+
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+This allow to select a specific Country and Zone to show their habitat area contribution in %
+
+```{r}
+selectInput(
+      inputId = "Country",
+      label = NULL,
+      choices = unique(cntry$Country)
+      )
+
+selectInput(
+      inputId = "Zone",
+      label = NULL,
+      choices = unique(cntry$Zone)
+      )
+```
+
+These % are calculated over the total area of each habitat, here we represent the contribution each country has to the total in %. 
 
 Column
 -----------------------------------------------------------------------
@@ -91,17 +153,16 @@ Column
 ### Top 20 countries for habitat area
 
 ```{r}
-dfInput <- reactive({
-        habitats %>% filter(Habitat == input$Habitat)
+dfInput2 <- reactive({
+        cntry %>% filter(Country == input$Country & Zone == input$Zone)
     })
     
 renderPlot({
-        df1 <- dfInput() %>% arrange(Country, Area) %>% 
-            top_n(20)
-        ggplot(df1) +
-            aes(x = reorder(Country, Area), y = Area) +
+        df2 <- dfInput2() %>% arrange(Habitat, rel_area) 
+        ggplot(df2) +
+            aes(x = reorder(Habitat, rel_area), y = rel_area) +
             geom_col(fill = "black") +
-            labs(x = "", y = bquote("Area (" * m ^ 2 ~ ")")) +
+            labs(x = "", y = "Relative % to total habitat area") +
             theme_economist_white() +
             theme(axis.text.x = element_text(angle = 90))+
             coord_flip()
@@ -118,6 +179,7 @@ Column {data-height=700}
 
 ```{r Coastal habitat diversity, fig.height=10}
 # habitat diversity per country
+rich$Shannon_H<- round(rich$Shannon_H, 2)
 div_map <- merge(world, filter(rich, Zone == "Coastal"), by = "Country")
 lines<-sf::st_as_sf(div_map)
 div_map<- dplyr::select(lines, Country, Area=Shape_Area, Richness, Shannon_H)
@@ -151,8 +213,16 @@ Contacts
 Column {data-height=700}
 -----------------------------------------------------------------------
 ### Authors
+
 Fabio Favoretto and Joy Kumagai
 
-contacts: 
+For information and bug reports please contact: 
+
 favoretto.fabio@gmail.com
 jkumagai96@gmail.com
+
+All data in this dashboard comes from open source datasets, however these have rules for sharing them
+please **do not share** any of this information if not stricly related to the Blue Paper 10 drafting. 
+
+If you might want some more information about these data or how to cite them, 
+you can contact the authors and they will provide the info you needed. 
