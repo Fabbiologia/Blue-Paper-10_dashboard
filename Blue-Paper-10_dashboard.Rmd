@@ -1,9 +1,14 @@
 ---
-title: "Blue Paper 10: habitats"
+title: 'Blue Paper 10: habitats'
 resource_files:
 - data/EEZ_land.shx
 - data/EEZ_land.prj
 - data/EEZ_land.dbf
+- data/EEZ_ocean.cpg
+- data/EEZ_ocean.dbf
+- data/EEZ_ocean.prj
+- data/EEZ_ocean.qpj
+- data/EEZ_ocean.shx
 runtime: shiny
 output:
   flexdashboard::flex_dashboard:
@@ -26,10 +31,9 @@ library(vegan)
 library(plotly)
 library(shiny)
 library(ggthemes)
-library(ggthemr)
 library(leaflet)
-world <- shapefile("data/EEZ_land.shp", verbose = FALSE)
-habitats <- readRDS("data/habitats.RDS")
+world <- shapefile("data/EEZ_ocean.shp", verbose = FALSE)
+habitats <- read.csv("data/habitats.csv")
 
 cntry <- habitats %>%
   group_by(Zone, Habitat) %>%
